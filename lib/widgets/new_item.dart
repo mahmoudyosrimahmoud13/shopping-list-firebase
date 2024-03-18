@@ -15,25 +15,33 @@ class NewItem extends StatefulWidget {
 }
 
 class _NewItemState extends State<NewItem> {
+  bool _isSending = false;
   final _formKey = GlobalKey<FormState>();
   var _selectedCategory = categories[Categories.vegetables]!;
   String _enteredName = '';
   int _enteredQuantity = 0;
-  void saveItem() {
+  void saveItem() async {
+    setState(() {
+      _isSending = true;
+    });
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
       final url = Uri.https(
           'flutter-b192e-default-rtdb.firebaseio.com', 'shoping-list.json');
-      http.post(url,
+      final response = await http.post(url,
           headers: {'content-type': 'application/json'},
           body: json.encode({
             'name': _enteredName,
             'quantity': _enteredQuantity,
             'category': _selectedCategory.title
           }));
-      print(_enteredName);
+
+      final resData = jsonDecode(response.body);
+      if (!context.mounted) {
+        return;
+      }
       Navigator.of(context).pop(GroceryItem(
-          id: DateTime.now().toString(),
+          id: resData['name'],
           name: _enteredName,
           quantity: _enteredQuantity,
           category: _selectedCategory));
@@ -135,7 +143,16 @@ class _NewItemState extends State<NewItem> {
                         _formKey.currentState!.reset();
                       },
                       child: const Text('Reset')),
-                  ElevatedButton(onPressed: saveItem, child: Text('Add item'))
+                  ElevatedButton(
+                    onPressed: _isSending ? null : saveItem,
+                    child: _isSending
+                        ? Container(
+                            child: CircularProgressIndicator(),
+                            width: 16,
+                            height: 16,
+                          )
+                        : Text('Add item'),
+                  )
                 ],
               )
             ],
